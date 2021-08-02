@@ -2,22 +2,18 @@ package com.polsl.emagnifier;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.ImageFormat;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -38,6 +34,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
@@ -55,7 +52,9 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
-import java.util.Arrays;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -78,7 +77,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public Size imgResolution;
     float scaleFactor;
     HashMap<Rect,String> _rectList = new HashMap<Rect, String>();
-
+    Preview preview;
+    ProcessCameraProvider cameraProvider;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private @Nullable
@@ -116,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             @Override
             public void run() {
                 try {
-                    ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
+                    cameraProvider = cameraProviderFuture.get();
                     MainActivity.this.bindPreview(cameraProvider);
                 } catch (ExecutionException | InterruptedException | CameraAccessException e) {
                     // No errors need to be handled for this feature.
@@ -130,11 +130,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
      *
      * Binding to camera
      */
+    @SuppressLint("RestrictedApi")
     private void bindPreview(ProcessCameraProvider cameraProvider) throws CameraAccessException {
         imgResolution= new Size(mCameraView.getWidth(), mCameraView.getHeight());
         Log.d("imgres",String.valueOf(imgResolution.toString()));
 
-        @SuppressLint("RestrictedApi") Preview preview = new Preview.Builder()
+        preview = new Preview.Builder()
                 .setTargetResolution(imgResolution)
                 .setTargetAspectRatioCustom(new Rational(9, 16))
                 .build();
@@ -144,17 +145,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
         preview.setSurfaceProvider(mCameraView.createSurfaceProvider());
 
-        //Getting camera resolution
-        // Mozna wywalic
-        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        for (final String cameraId : cameraManager.getCameraIdList()) {
-
-            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap streamConfigurationMap = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            Size[] sizes = streamConfigurationMap.getOutputSizes(ImageFormat.RAW_SENSOR);
-            Log.d("resolution", "onCreate:" + Arrays.toString(sizes));
-
-        }
         //Image Analysis Function
         //Set static size according to your device or write a dynamic function for it
         @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis =
@@ -293,6 +283,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         holder = surfaceView.getHolder();
         holder.setFormat(PixelFormat.TRANSPARENT);
         holder.addCallback(this);
+        //Button for text to speech
         Button readButton= (Button) findViewById(R.id.readBtn);
         readButton.setOnClickListener((new View.OnClickListener() {
             @Override
@@ -301,7 +292,44 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                speakOut(textView.getText().toString());
             }
         }));
+        ImageCapture imageCapture =
+                new ImageCapture.Builder()
+                        .setTargetRotation(mCameraView.getDisplay().getRotation())
+                        .build();
+//Button for taking photo
+        Button takePhotoButton= (Button) findViewById(R.id.takePhotoBtn);
+        takePhotoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US);
+                File file = new File(getBatchDirectoryName(), mDateFormat.format(new Date())+ ".jpg");
+                ImageCapture.OutputFileOptions outputFileOptions =
+                        new ImageCapture.OutputFileOptions.Builder(file) .build();
+                imageCapture.takePicture(executor,
+                        /*new ImageCapture.OnImageSavedCallback() {
+                            @Override
+                            public void onImageSaved(ImageCapture.OutputFileResults outputFileResults) {
 
+                            }
+                            @Override
+                            public void onError(ImageCaptureException error) {
+                                // insert your code here.
+                            }
+                        },*/
+                        new ImageCapture.OnImageCapturedCallback(){
+                            @Override
+                            public void onCaptureSuccess(ImageProxy imageProxy) {
+                                @SuppressLint("UnsafeExperimentalUsageError")
+                                Image capturedImage= imageProxy.getImage();
+                                imageProxy.close();
+                            //TODO: SAVING PICTURE
+                            }
+
+                        });
+
+                }
+
+        });
 
     }
     public void onPause(){
@@ -337,27 +365,22 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             canvas.drawRect(rect,paint);
             canvas.drawText(line,rect.left,rect.bottom,paint2);
         }
+        //TODO: niebieski kolorek zamiast tekstu
        // rectArrayList.forEach(x->canvas.drawRect(x, paint));
 
 //        canvas.drawRect(rect, paint);
         holder.unlockCanvasAndPost(canvas);
     }
-    @SuppressLint("ResourceAsColor")
+    @SuppressLint({"ResourceAsColor", "RestrictedApi"})
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int touchX = (int) event.getX();
         touchX=(int) (touchX/scaleFactor);
         int touchY = (int) event.getY();
         touchY=(int) (touchY/scaleFactor);
-     //   canvas = holder.lockCanvas();
-      //  canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-      //  //border's properties
-       // paint = new Paint();
-       // paint.setStyle(Paint.Style.STROKE);
-        //paint.setColor(android.R.color.white);
-       //paint.setStrokeWidth(2);
-       // canvas.drawCircle(touchX,touchY,5,paint);
-      // holder.unlockCanvasAndPost(canvas);
+        //val bitmap = viewFinder.getBitmap();
+        // ivPreview.setImageBitmap(bitmap);// blokowanie preview
+        // CameraX.unbindAll()
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:
                 System.out.println("Touching down!");
@@ -367,73 +390,21 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         String line = entry.getValue();
                         textView.setText(line);
                     }
-
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                for(Map.Entry<Rect,String> entry : _rectList.entrySet()) {
-                    Rect rect = entry.getKey();
-                    String line = entry.getValue();
-                    Log.d("asd","dawaj");
-
-                }
+                /*try {
+                    MainActivity.this.bindPreview(cameraProvider);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }*/
                 break;
-            case MotionEvent.ACTION_MOVE:
-                System.out.println("Sliding your finger around on the screen.");
+            case MotionEvent.ACTION_CANCEL:
+            //startCamera();
                 break;
         }
         return true;
     }
-    /**
-     *
-     * For drawing the rectangular box
-     */
- /*   private void DrawFocusRect(int color) {
-        DisplayMetrics displaymetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-        int height = mCameraView.getHeight();
-        int width = mCameraView.getWidth();
-
-        //cameraHeight = height;
-        //cameraWidth = width;
-
-        int left, right, top, bottom, diameter;
-
-        diameter = width;
-        if (height < width) {
-            diameter = height;
-        }
-
-        int offset = (int) (0.05 * diameter);
-        diameter -= offset;
-
-        canvas = holder.lockCanvas();
-        canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-        //border's properties
-        paint = new Paint();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(color);
-        paint.setStrokeWidth(5);
-
-        left = width / 2 - diameter / 3;
-        top = height / 2 - diameter / 2;
-        right = width / 2 + diameter / 3;
-        bottom = height / 2 + diameter / 2;
-
-        xOffset = left;
-        yOffset = top;
-        boxHeight = bottom - top;
-        boxWidth = right - left;
-        //Changing the value of x in diameter/x will change the size of the box ; inversely proportionate to x
-
-        int[] dimensions = rectangleDimensions();
-        canvas.drawRect(dimensions[0], dimensions[1], dimensions[2], dimensions[3], paint);
-        holder.unlockCanvasAndPost(canvas);
-    }*/
-
-    /**
-     * Callback functions for the surface Holder
-     */
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
@@ -456,46 +427,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
         }
     }
-/*    public int[] rectangleDimensions ()
-    {
-        DisplayMetrics displaymetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-        int height = mCameraView.getHeight();
-        int width = mCameraView.getWidth();
+    public String getBatchDirectoryName() {
 
-        Log.println(Log.DEBUG,"displaywidth",String.valueOf((displaymetrics.widthPixels)));
-        Log.println(Log.DEBUG,"displayheight",String.valueOf((displaymetrics.heightPixels)));
-        Log.println(Log.DEBUG,"mcameraheight",String.valueOf((height)));
-        Log.println(Log.DEBUG,"mcamerawidth",String.valueOf((width)));
-        //cameraHeight = height;
-        //cameraWidth = width;
-
-        int left, right, top, bottom, diameter;
-
-        diameter = width;
-        if (height < width) {
-            diameter = height;
+        String app_folder_path = "";
+        app_folder_path = Environment.getExternalStorageDirectory().toString() + "/images";
+        File dir = new File(app_folder_path);
+        if (!dir.exists() && !dir.mkdirs()) {
         }
-
-        int offset = (int) (0.05 * diameter);
-        diameter -= offset;
-
-        left = width / 2 - diameter / 3;
-        top = height / 2 - diameter / 2;
-        //right = width / 2 + diameter / 3;
-        //bottom = height / 2 + diameter / 2;
-
-        xOffset = left;
-        yOffset = top;
-        boxHeight = 550;
-        boxWidth = 700;
-
-
-        int[] rectangleDimensions = new int[4];
-        rectangleDimensions[0]=xOffset;
-        rectangleDimensions[1]=yOffset;
-        rectangleDimensions[2]=boxWidth;
-        rectangleDimensions[3]=boxHeight;
-        return rectangleDimensions;
-    }*/
+        return app_folder_path;
+    }
 }
