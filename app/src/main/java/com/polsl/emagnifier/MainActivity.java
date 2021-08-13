@@ -2,27 +2,25 @@ package com.polsl.emagnifier;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
+import android.app.Dialog;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.ImageFormat;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -34,6 +32,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
@@ -43,6 +42,7 @@ import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.android.gms.tasks.OnFailureListener;
@@ -55,7 +55,6 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -143,20 +142,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 .build();
 
         preview.setSurfaceProvider(mCameraView.createSurfaceProvider());
-
-        //Getting camera resolution
-        // Mozna wywalic
-        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        for (final String cameraId : cameraManager.getCameraIdList()) {
-
-            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap streamConfigurationMap = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            Size[] sizes = streamConfigurationMap.getOutputSizes(ImageFormat.RAW_SENSOR);
-            Log.d("resolution", "onCreate:" + Arrays.toString(sizes));
-
-        }
-        //Image Analysis Function
-        //Set static size according to your device or write a dynamic function for it
         @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis =
                 new ImageAnalysis.Builder()
                         .setTargetResolution(imgResolution)
@@ -208,9 +193,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                 // Task completed successfully
                                 // ...
                                 textView=findViewById(R.id.text);
+                                textView.setMovementMethod(new ScrollingMovementMethod());
                                 //getting decoded text
                                 StringBuilder stringBuilder =  new StringBuilder();
-                                String text=firebaseVisionText.getText();
+
                                 //Setting the decoded text in the textview
                                /* textView.setText(text);*/
                                 //for getting blocks and line elements
@@ -253,8 +239,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     }
                                 });
             }
-
-
         });
         Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, imageAnalysis,preview);
     }
@@ -301,8 +285,47 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                speakOut(textView.getText().toString());
             }
         }));
+        TextView dialogTextView = (TextView) findViewById(R.id.dialogTView);
+        Button showButton= (Button) findViewById(R.id.showBtn);
+        showButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                    // Create the fragment and show it as a dialog.
+                    String textToDialog = textView.getText().toString();
+                    DialogFragment newFragment = TextDialog.newInstance(textToDialog);
+                    newFragment.show(getSupportFragmentManager(), "tekst");
 
 
+
+            }
+        });
+    }
+    public static class TextDialog  extends DialogFragment {
+        public String textToDialog;
+        static public TextDialog newInstance(String textToDialog){
+            TextDialog textDialog= new TextDialog();
+            // Supply num input as an argument.
+            Bundle args = new Bundle();
+            args.putString("tekst", textToDialog);
+            textDialog.setArguments(args);
+            return textDialog;
+        }
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            // Use the Builder class for convenient dialog construction
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle("Wykryty tekst")
+            .setView(R.layout.dialog_view);
+            LayoutInflater inflater = getActivity().getLayoutInflater();
+            textToDialog= getArguments().getString("tekst");
+            View content =  inflater.inflate(R.layout.dialog_view, null);
+            builder.setView(content);
+            TextView dialogTextView = content.findViewById(R.id.dialogTView);
+            dialogTextView.setText(textToDialog);
+            dialogTextView.setMovementMethod(new ScrollingMovementMethod());
+            return builder.create();
+        }
     }
     public void onPause(){
         if(tts !=null){
@@ -349,15 +372,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         touchX=(int) (touchX/scaleFactor);
         int touchY = (int) event.getY();
         touchY=(int) (touchY/scaleFactor);
-     //   canvas = holder.lockCanvas();
-      //  canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-      //  //border's properties
-       // paint = new Paint();
-       // paint.setStyle(Paint.Style.STROKE);
-        //paint.setColor(android.R.color.white);
-       //paint.setStrokeWidth(2);
-       // canvas.drawCircle(touchX,touchY,5,paint);
-      // holder.unlockCanvasAndPost(canvas);
+
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:
                 System.out.println("Touching down!");
@@ -367,7 +382,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         String line = entry.getValue();
                         textView.setText(line);
                     }
-
                 }
                 break;
             case MotionEvent.ACTION_UP:
@@ -384,52 +398,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
         return true;
     }
-    /**
-     *
-     * For drawing the rectangular box
-     */
- /*   private void DrawFocusRect(int color) {
-        DisplayMetrics displaymetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-        int height = mCameraView.getHeight();
-        int width = mCameraView.getWidth();
-
-        //cameraHeight = height;
-        //cameraWidth = width;
-
-        int left, right, top, bottom, diameter;
-
-        diameter = width;
-        if (height < width) {
-            diameter = height;
-        }
-
-        int offset = (int) (0.05 * diameter);
-        diameter -= offset;
-
-        canvas = holder.lockCanvas();
-        canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-        //border's properties
-        paint = new Paint();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(color);
-        paint.setStrokeWidth(5);
-
-        left = width / 2 - diameter / 3;
-        top = height / 2 - diameter / 2;
-        right = width / 2 + diameter / 3;
-        bottom = height / 2 + diameter / 2;
-
-        xOffset = left;
-        yOffset = top;
-        boxHeight = bottom - top;
-        boxWidth = right - left;
-        //Changing the value of x in diameter/x will change the size of the box ; inversely proportionate to x
-
-        int[] dimensions = rectangleDimensions();
-        canvas.drawRect(dimensions[0], dimensions[1], dimensions[2], dimensions[3], paint);
-        holder.unlockCanvasAndPost(canvas);
-    }*/
 
     /**
      * Callback functions for the surface Holder
@@ -453,49 +421,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Override
     public void onInit(int status) {
         if(status == TextToSpeech.SUCCESS){
-
         }
     }
-/*    public int[] rectangleDimensions ()
-    {
-        DisplayMetrics displaymetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
-        int height = mCameraView.getHeight();
-        int width = mCameraView.getWidth();
-
-        Log.println(Log.DEBUG,"displaywidth",String.valueOf((displaymetrics.widthPixels)));
-        Log.println(Log.DEBUG,"displayheight",String.valueOf((displaymetrics.heightPixels)));
-        Log.println(Log.DEBUG,"mcameraheight",String.valueOf((height)));
-        Log.println(Log.DEBUG,"mcamerawidth",String.valueOf((width)));
-        //cameraHeight = height;
-        //cameraWidth = width;
-
-        int left, right, top, bottom, diameter;
-
-        diameter = width;
-        if (height < width) {
-            diameter = height;
-        }
-
-        int offset = (int) (0.05 * diameter);
-        diameter -= offset;
-
-        left = width / 2 - diameter / 3;
-        top = height / 2 - diameter / 2;
-        //right = width / 2 + diameter / 3;
-        //bottom = height / 2 + diameter / 2;
-
-        xOffset = left;
-        yOffset = top;
-        boxHeight = 550;
-        boxWidth = 700;
-
-
-        int[] rectangleDimensions = new int[4];
-        rectangleDimensions[0]=xOffset;
-        rectangleDimensions[1]=yOffset;
-        rectangleDimensions[2]=boxWidth;
-        rectangleDimensions[3]=boxHeight;
-        return rectangleDimensions;
-    }*/
 }
