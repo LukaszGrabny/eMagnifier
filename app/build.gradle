@@ -26,9 +26,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {
+    implementation 'androidx.navigation:navigation-fragment:2.3.0'
+    implementation 'androidx.navigation:navigation-ui:2.3.0'
     def camerax_version = '1.0.0-beta05'
     implementation "androidx.camera:camera-core:$camerax_version"
 
@@ -53,5 +58,7 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    implementation 'com.github.ddyos:UnicodeExifInterface:1.2.1'
 }
 apply plugin: 'com.google.gms.google-services'

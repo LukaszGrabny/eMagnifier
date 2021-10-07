@@ -5,7 +5,6 @@ import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
@@ -13,6 +12,7 @@ import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CaptureRequest;
 import android.media.Image;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
@@ -21,20 +21,16 @@ import android.util.Log;
 import android.util.Range;
 import android.util.Rational;
 import android.util.Size;
-import android.view.Display;
 import android.view.MotionEvent;
-import android.view.OrientationEventListener;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.camera2.interop.Camera2Interop;
 import androidx.camera.core.Camera;
@@ -44,8 +40,6 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
@@ -60,19 +54,21 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static java.lang.Float.max;
 
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, TextToSpeech.OnInitListener{
+public class RecordActivity extends AppCompatActivity implements SurfaceHolder.Callback, TextToSpeech.OnInitListener {
+
     TextView textView;
     PreviewView mCameraView;
     SurfaceHolder holder;
@@ -82,15 +78,15 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     int cameraHeight, cameraWidth, xOffset, yOffset, boxWidth, boxHeight;
     private static final int MY_CAMERA_REQUEST_CODE = 100;
     public Size imgResolution;
-    Float[] scaleFactorWidthHeight= new Float[2];
-    LinkedHashMap<Rect,String> _rectList = new LinkedHashMap<Rect, String>();
-
+    float scaleFactor;
+    ConcurrentHashMap<Rect,String> _rectList = new ConcurrentHashMap<Rect, String>();
+    boolean recordBtnClicked;
+    LinkedHashSet<String> stringSet= new LinkedHashSet<>();
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private @Nullable
     TextToSpeech tts = null;
-    int rotation;
-    int rotationDegrees;
+
     /**
      *Responsible for converting the rotation degrees from CameraX into the one compatible with Firebase ML
      */
@@ -111,21 +107,17 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
     }
 
-
-    /**
-     * Starting Camera
-     */
     void startCamera(){
-            mCameraView = findViewById(R.id.previewView);
+        mCameraView = findViewById(R.id.previewViewRecord);
         imgResolution= new Size(mCameraView.getWidth(), mCameraView.getHeight());
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
 
-        cameraProviderFuture.addListener(new Runnable() {
+         cameraProviderFuture.addListener(new Runnable() {
             @Override
             public void run() {
                 try {
                     ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                    MainActivity.this.bindPreview(cameraProvider);
+                    RecordActivity.this.bindPreview(cameraProvider);
                 } catch (ExecutionException | InterruptedException | CameraAccessException e) {
                     // No errors need to be handled for this feature.
                     // This should never be reached.
@@ -133,40 +125,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             }
         }, ContextCompat.getMainExecutor(this));
     }
-    private boolean isDimensionSwapped(){
-        boolean swapped=false;
-        Display display = ((WindowManager)getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
-        int orientation=display.getRotation();
-        if(orientation== Surface.ROTATION_0)
-            {rotation=Surface.ROTATION_0;}
-        if(orientation== Surface.ROTATION_90)
-            {swapped=true;rotation=Surface.ROTATION_90;}
-        if(orientation== Surface.ROTATION_180)
-            { rotation=Surface.ROTATION_180;}
-        if(orientation== Surface.ROTATION_270)
-            {swapped=true; rotation=Surface.ROTATION_270;}
-        return swapped;
-    }
     /**
-     *
      * Binding to camera
      */
     private void bindPreview(ProcessCameraProvider cameraProvider) throws CameraAccessException {
-        boolean swappedDimensions=isDimensionSwapped();
-        Rational rational;
-        if(!swappedDimensions) {
-            imgResolution = new Size(mCameraView.getWidth(), mCameraView.getHeight());
-            rational = new Rational(3, 5);
-        }
-        else {
-            imgResolution = new Size(mCameraView.getHeight(), mCameraView.getWidth());
-            rational=new Rational(5, 3);
-        }
+        imgResolution= new Size(mCameraView.getWidth(), mCameraView.getHeight());
         Log.d("imgres",String.valueOf(imgResolution.toString()));
 
         @SuppressLint("RestrictedApi") Preview preview = new Preview.Builder()
                 .setTargetResolution(imgResolution)
-                .setTargetAspectRatioCustom(rational)
+                .setTargetAspectRatioCustom(new Rational(9, 16))
                 .build();
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
@@ -176,10 +144,9 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
         Camera2Interop.Extender ext = new Camera2Interop.Extender<>(builder);
         ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(10, 15));
+        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(60, 120));
         builder.setTargetResolution(imgResolution)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setTargetRotation(rotation)
                 .build();
         @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis = builder.build();
         imageAnalysis.setAnalyzer(executor, new ImageAnalysis.Analyzer() {
@@ -187,8 +154,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             @Override
             public void analyze(@NonNull ImageProxy image) {
                 //changing normal degrees into Firebase rotation
-                rotationDegrees = degreesToFirebaseRotation(image.getImageInfo().getRotationDegrees());
-
+                int rotationDegrees = degreesToFirebaseRotation(image.getImageInfo().getRotationDegrees());
                 if (image == null || image.getImage() == null) {
                     return;
                 }
@@ -202,56 +168,58 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 Log.d("bmp",String.valueOf(bmp.getWidth()));
                 Log.d("mCamera width",String.valueOf(mCameraView.getWidth()));
                 Log.d("mCamera height",String.valueOf(mCameraView.getHeight()));
-
-                scaleFactorWidthHeight[0] = ((float) bmp.getWidth() / (float) mCameraView.getWidth());
-                scaleFactorWidthHeight[1] = ((float) bmp.getHeight() / (float) mCameraView.getHeight());
-                Log.d("asd",String.valueOf(scaleFactorWidthHeight[0]));
-                Log.d("asd",String.valueOf(scaleFactorWidthHeight[1]));
+                scaleFactor = max(
+                        (float) bmp.getWidth() / (float) mCameraView.getWidth(),
+                        (float) bmp.getHeight() / (float) mCameraView.getHeight());
+                Log.d("asd",String.valueOf(scaleFactor));
                 Bitmap resizedBitmap =
                         Bitmap.createScaledBitmap(
                                 bmp,
-                                (int) ((bmp.getWidth() / ((float) bmp.getWidth() / (float) mCameraView.getWidth()))),
+                                (int) ((bmp.getWidth() / ((float) bmp.getWidth() / (float) mCameraView.getWidth()))), //*1.05
                                 (int) (bmp.getHeight() / ((float) bmp.getHeight() / (float) mCameraView.getHeight())),
                                 true);
 
                 Bitmap bitmap = Bitmap.createBitmap(resizedBitmap);
                 Log.d("asd",String.valueOf(bitmap.getWidth()));
                 Log.d("asd",String.valueOf(bitmap.getHeight()));
-                Log.d("asd2",String.valueOf(surfaceView.getWidth()));
-                Log.d("asd2",String.valueOf(surfaceView.getHeight()));
+                //initializing FirebaseVisionTextRecognizer object
                 FirebaseVisionTextRecognizer detector = FirebaseVision.getInstance()
                         .getOnDeviceTextRecognizer();
                 //Passing FirebaseVisionImage Object created from the bitmap
                 Task<FirebaseVisionText> result =  detector.processImage(FirebaseVisionImage.fromBitmap(bitmap))
                         .addOnSuccessListener(new OnSuccessListener<FirebaseVisionText>() {
+                            @RequiresApi(api = Build.VERSION_CODES.O)
                             @Override
-                            public void onSuccess(@NonNull @NotNull FirebaseVisionText firebaseVisionText) {
-                                textView=findViewById(R.id.text);
+                            public void onSuccess(FirebaseVisionText firebaseVisionText) {
+                                // Task completed successfully
+                                // ...
+                                textView=findViewById(R.id.textRecord);
                                 textView.setMovementMethod(new ScrollingMovementMethod());
-
+                                //getting decoded text
                                 StringBuilder stringBuilder =  new StringBuilder();
-                                String text=firebaseVisionText.getText();
-
-
+                                String text=firebaseVisionText.getText(); //scrollowanie
+                                //Setting the decoded text in the textview
+                                /* textView.setText(text);*/
+                                //for getting blocks and line elements
+                                int color = R.color.white;
+                                // ArrayList<Rect> rectList = new ArrayList<Rect>();
                                 for (FirebaseVisionText.TextBlock block: firebaseVisionText.getTextBlocks()) {
+                                    String blockText = block.getText();
+                                    _rectList.put(block.getBoundingBox(),blockText);
 
-                                        _rectList.put(block.getBoundingBox(),block.getText());
-//                                        for (FirebaseVisionText.Element element: line.getElements()) {
-//                                            String elementText = element.getText();
-//                                        }
                                 }
-                                DrawBoundingBox(rotationDegrees);
+                                DrawBoundingBox(color,_rectList, rotationDegrees);
 
-                                //Opoźnienie odświeżania detektora
                                 Runnable runnable = new Runnable() {
                                     @Override
                                     public void run() {
+                                        StringBuilder stringBuilder = new StringBuilder();
                                         image.close();
-                                        _rectList=new LinkedHashMap<Rect, String>();
+                                        _rectList=new ConcurrentHashMap<Rect, String>();
                                     }
                                 };
                                 final Handler handler = new Handler();
-                                handler.postDelayed(runnable,1500);
+                                handler.postDelayed(runnable,1300);
                             }
                         })
                         .addOnFailureListener(
@@ -259,7 +227,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
                                         // Task failed with an exception
-                                        // ...
                                         Log.e("Error",e.toString());
                                         image.close();
                                     }
@@ -284,81 +251,92 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
-            @Override
-            public void onOrientationChanged(int orientation) {
-                ConstraintLayout ll=  findViewById(R.id.linearLayout);
-                ConstraintSet set = new ConstraintSet();
-                set.clone(ll);
-                // Monitors orientation values to determine the target rotation value
-                if (orientation >= 45 && orientation < 135) {
-                    rotation = Surface.ROTATION_270;
-                    set.setDimensionRatio(R.layout.activity_main,"1:3");
-                } else if (orientation >= 135 && orientation < 225) {
-                    rotation = Surface.ROTATION_180;
-                } else if (orientation >= 225 && orientation < 315) {
-                    rotation = Surface.ROTATION_90;
-                    set.setDimensionRatio(R.layout.activity_main,"1:3");
-                } else {
-                    rotation = Surface.ROTATION_0;
-                }
-
-                set.applyTo(ll);
-
-            }
-        };
-
-        orientationEventListener.enable();
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_record);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_DENIED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
         }
-        tts = new TextToSpeech(this,this);
-       // this.onRequestPermissionsResult(100, new String[]{Manifest.permission.CAMERA},)
+        // this.onRequestPermissionsResult(100, new String[]{Manifest.permission.CAMERA},)
         //Start Camera
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             startCamera();
         }
+        tts = new TextToSpeech(this,this);
         //Create the bounding box
-        surfaceView = findViewById(R.id.overlay);
+        surfaceView = RecordActivity.this.findViewById(R.id.overlayRecord);
         surfaceView.setZOrderOnTop(true);
         holder = surfaceView.getHolder();
         holder.setFormat(PixelFormat.TRANSPARENT);
         holder.addCallback(this);
 
-        FloatingActionButton readButton= findViewById(R.id.readBtn);
+        TextView dialogTextView = (TextView) findViewById(R.id.dialogTView);
+        FloatingActionButton recordButton = findViewById(R.id.recordBtnRecord);
+        recordButton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onClick(View v) {
+                    if(!recordBtnClicked) {
+                        recordBtnClicked = true;
+                        textView.setText("");
+                        RecordAndProcess();
+                        recordButton.setImageResource(android.R.drawable.ic_media_pause);
+                    }
+                    else {
+                        recordBtnClicked = false;
+                        textView.setText("");
+                        StringBuilder recorderStringBuilder = new StringBuilder();
+
+                         recorderStringBuilder = checkSimilarity(stringSet);
+
+                         ArrayList<String> dummyString=spiltParagraph(1,recorderStringBuilder.toString());
+                        Set<String> set2=new LinkedHashSet<>(dummyString);
+                        StringBuilder sb = new StringBuilder();
+                        for (String s : set2) {
+                            sb.append(s);
+                            /*if(!s.contentEquals(""))  sb.append(System.getProperty("line.separator"));*/
+                            if(s.contentEquals("."))  sb.append(System.getProperty("line.separator"));
+                        }
+                        textView.setText(sb.toString());
+                        textView.setTextIsSelectable(true);
+                        textView.setFocusableInTouchMode(true);
+                        textView.setFocusable(true);
+                        recordButton.setImageResource(android.R.drawable.presence_video_online);
+                        stringSet.removeAll(stringSet);
+                        sb.setLength(0);
+                    }
+            }
+        });
+        FloatingActionButton readButton= findViewById(R.id.speakBtnRecord);
         readButton.setOnClickListener((new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(textView.getText().toString().length()>4000){
+                if(textView.getText().toString().length()<TextToSpeech.getMaxSpeechInputLength()){
+
                     speakOut(textView.getText().toString());
                 }
                 else{
-
-                    Collection<String> chunks = splitStringBySize(textView.getText().toString(),3999);
+                    Collection<String> chunks = splitStringBySize(textView.getText().toString(),TextToSpeech.getMaxSpeechInputLength());
+                    Log.d("chunk", String.valueOf(chunks.size()));
                     speakOutLong(chunks);
                 }
             }
         }));
-        FloatingActionButton readAllButton= findViewById(R.id.readAllBtn);
-        readAllButton.setOnClickListener((new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                StringBuilder sb = new StringBuilder();
-                for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
-                    sb.append(entry.getValue());
-                    sb.append("\n");
+    }
+    private ArrayList<String> spiltParagraph(int splitAfterWords, String someLargeText) {
+        String[] para = someLargeText.split(" ");
+        ArrayList<String> data = new ArrayList<>();
+        for (int i = 0; i < para.length; i += splitAfterWords) {
+            if (i + (splitAfterWords - 1) < para.length) {
+                StringBuilder compiledString = new StringBuilder();
+                for (int f = i; f <= i + (splitAfterWords - 1); f++) {
+                    compiledString.append(para[f] + " ");
                 }
-                textView.setText(sb.toString());
+                data.add(compiledString.toString());
             }
-        }));
-
-
+        }
+        return data;
     }
     private static Collection<String> splitStringBySize(String str, int size) {
         ArrayList<String> split = new ArrayList<>();
@@ -367,6 +345,38 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
         return split;
     }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private StringBuilder checkSimilarity(Set<String> input) {
+        int similarStrings = 0;
+        String[] split1 = new String[0];
+        String[] split2 = new String[0];
+        String[] inputArray= input.toArray(new String[input.size()]);
+        for (int j=0;j< inputArray.length-1;j++)
+        {
+           split1=inputArray[j].split(" ");
+           split2=inputArray[j+1].split(" ");
+            for (int i = 0; i < split1.length; i++) {
+                for(int k = 0; k < split2.length; k++)
+                {
+                    if (split1[i].contains(split2[k])) similarStrings++;
+                }
+            }
+            if(split1.length> split2.length){
+                if (similarStrings>split2.length/3) inputArray[j+1]="";
+            }else{
+                if (similarStrings>split1.length/3) inputArray[j]="";
+            }
+            similarStrings=0;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String s : inputArray) {
+            sb.append(s);
+            if(!s.contentEquals(""))  sb.append(System.getProperty("line.separator"));
+        }
+        return sb;
+    }
+
     public void onPause(){
         if(tts !=null){
             tts.stop();
@@ -378,51 +388,62 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         tts.setLanguage(new Locale("pl", "PL"));
         tts.speak(text.toLowerCase(new Locale("pl", "PL")),TextToSpeech.QUEUE_FLUSH,null,"");
     }
+
     private void speakOutLong(Collection<String> text) {
         tts.setLanguage(new Locale("pl", "PL"));
         for (String s : text){
-        tts.speak(s.toLowerCase(new Locale("pl", "PL")),TextToSpeech.QUEUE_ADD,null,"");
+            tts.speak(s.toLowerCase(new Locale("pl", "PL")),TextToSpeech.QUEUE_ADD,null,"");
         }
     }
+    private void  RecordAndProcess(){
+        new Thread(new Runnable() {
+            public void run() {
+                Log.d("thread","jestem");
+                while(recordBtnClicked){
+                    for(Map.Entry<Rect,String> entry : _rectList.entrySet()) {
+                        if (entry.getValue() != null) {
+                        stringSet.add(entry.getValue());
+                        }
+                    }
+                }
+            }
+        }).start();
+    }
 
-    private void DrawBoundingBox(int rotationDegrees) {
-
-            int colorBackground = Color.parseColor("#33e0f7fa");
-            int colorWhite = Color.parseColor("#8CFFFFFF");
+    private void DrawBoundingBox(int color, ConcurrentHashMap<Rect, String> rectHashMap, int rotationDegrees) {
+        if(canvas!=null) {
             canvas = holder.lockCanvas();
-            canvas.drawColor(colorBackground, PorterDuff.Mode.CLEAR);
+            canvas.drawColor(0, PorterDuff.Mode.CLEAR);
             canvas.rotate((float) rotationDegrees);
             //border's properties
             paint = new Paint();
-            paint.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint.setColor(colorBackground);
-            paint.setStrokeWidth(3);
-/*        Paint paint2 = new Paint();
-        paint2.setColor(colorWhite);*/
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setColor(color);
+            paint.setStrokeWidth(5);
+            Paint paint2 = new Paint();
+            paint2.setColor(color);
 
             //set text size
             for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
                 Rect rect = entry.getKey();
-              /*  int rectLeft= (int) (rect.left/scaleFactorWidthHeight[0]);
-                int rectTop= (int) (rect.top/scaleFactorWidthHeight[1]);
-                int rectRight= (int) (rect.right/scaleFactorWidthHeight[0]);
-                int rectBot= (int) (rect.bottom/scaleFactorWidthHeight[1]);
-                rect.set(rectLeft,rectTop,rectRight,rectBot);*/
+                String line = entry.getValue();
+                paint2.setTextSize((float) (rect.height() * 0.9));
                 canvas.drawRect(rect, paint);
+                canvas.drawText(line, rect.left, rect.bottom, paint2);
             }
             // rectArrayList.forEach(x->canvas.drawRect(x, paint));
 
 //        canvas.drawRect(rect, paint);
             holder.unlockCanvasAndPost(canvas);
-
+        }
     }
     @SuppressLint("ResourceAsColor")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int touchX = (int) event.getX();
-        touchX=(int) (touchX/scaleFactorWidthHeight[0]);
+        touchX=(int) (touchX/scaleFactor);
         int touchY = (int) event.getY();
-        touchY=(int) (touchY/scaleFactorWidthHeight[1]);
+        touchY=(int) (touchY/scaleFactor);
 
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:
@@ -450,10 +471,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         return true;
     }
 
-    /**
-     * Callback functions for the surface Holder
-     */
-
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
 
@@ -465,13 +482,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
     @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-
+    public void surfaceDestroyed(SurfaceHolder holder) { ;
     }
 
     @Override
     public void onInit(int status) {
-        if(status == TextToSpeech.SUCCESS){
-        }
+
     }
 }
