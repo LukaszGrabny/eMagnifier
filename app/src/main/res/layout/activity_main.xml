@@ -5,7 +5,7 @@
     android:layout_margin="0dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:layout_constraintHeight_percent="0.80"
+    app:layout_constraintHeight_percent="0.85"
     app:layout_constraintWidth_percent="1"
     app:layout_constraintHorizontal_bias="1"
     android:background="@color/black">
@@ -20,7 +20,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintHorizontal_bias="1"/>
+        app:layout_constraintHorizontal_bias="1"
+        app:layout_constraintVertical_bias="1"/>
 
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
@@ -62,9 +63,9 @@
         android:layout_margin="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.2"
+        app:layout_constraintHeight_percent="0.15"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintWidth_percent="0.912">
+        app:layout_constraintWidth_percent="0.95">
 
         <EditText
             android:id="@+id/text"

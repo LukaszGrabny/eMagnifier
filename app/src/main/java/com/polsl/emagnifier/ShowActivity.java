@@ -6,11 +6,13 @@ import android.app.Dialog;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CaptureRequest;
 import android.media.Image;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,13 +20,19 @@ import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.util.Range;
 import android.util.Rational;
 import android.util.Size;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,6 +41,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.camera2.interop.Camera2Interop;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -40,6 +49,8 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.LifecycleOwner;
@@ -55,7 +66,6 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
 import com.google.firebase.ml.vision.text.FirebaseVisionText;
 import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -77,6 +87,7 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public Size imgResolution;
     float scaleFactor;
     LinkedHashMap<Rect,String> _rectList = new LinkedHashMap<Rect, String>();
+    int rotation;
 
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -129,25 +140,57 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
      *
      * Binding to camera
      */
+    @SuppressLint("RestrictedApi")
     private void bindPreview(ProcessCameraProvider cameraProvider) throws CameraAccessException {
-        imgResolution= new Size(mCameraView.getWidth(), mCameraView.getHeight());
+        boolean swappedDimensions=isDimensionSwapped();
+        Rational rational;
+        Preview preview = null;
+        if(!swappedDimensions) {
+            imgResolution = new Size(mCameraView.getWidth(), mCameraView.getHeight());
+            rational = new Rational(9, 16);
+            preview = new Preview.Builder()
+                    .setTargetResolution(imgResolution)
+                    .setTargetAspectRatioCustom(rational)
+                    .build();
+        }
+        else {
+            imgResolution = new Size(mCameraView.getHeight(), mCameraView.getWidth());
+            rational=new Rational(21, 9);
+             preview = new Preview.Builder()
+                    .setTargetResolution(imgResolution)
+                    .setTargetAspectRatioCustom(rational)
+                    .build();
+        }
         Log.d("imgres",String.valueOf(imgResolution.toString()));
 
-        @SuppressLint("RestrictedApi") Preview preview = new Preview.Builder()
-                .setTargetResolution(imgResolution)
-                .setTargetAspectRatioCustom(new Rational(9, 16))
-                .build();
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
 
         preview.setSurfaceProvider(mCameraView.createSurfaceProvider());
-        @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis =
-                new ImageAnalysis.Builder()
-                        .setTargetResolution(imgResolution)
-                        .setTargetAspectRatioCustom(new Rational(9,16))
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build();
+        ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
+        Camera2Interop.Extender ext = new Camera2Interop.Extender<>(builder);
+        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(60, 80));
+        Log.d("bmp",String.valueOf(imgResolution.getWidth()));
+        Log.d("bmp",String.valueOf(imgResolution.getHeight()));
+        Log.d("dobmp",String.valueOf(rotation));
+        Log.d("dobmp",String.valueOf(preview.getAttachedSurfaceResolution()));
+        if(swappedDimensions) {
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetRotation(rotation)
+                    .build();
+        }
+        else {
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetResolution(imgResolution)
+                    .setTargetRotation(rotation)
+                    .build();
+        }
+
+        @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis = builder.build();
         imageAnalysis.setAnalyzer(executor, new ImageAnalysis.Analyzer() {
             @SuppressLint("UnsafeExperimentalUsageError")
             @Override
@@ -213,7 +256,7 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
 //                                        }
                                     }
                                 }
-                                DrawBoundingBox(color,_rectList, rotationDegrees);
+                                DrawBoundingBox(rotationDegrees);
                                 //Opoźnienie odświeżania detektora
                                 Runnable runnable = new Runnable() {
                                     @Override
@@ -253,10 +296,50 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
             }
         }
     }
-
+    private boolean isDimensionSwapped(){
+        boolean swapped=false;
+        Display display = ((WindowManager)getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
+        int orientation=display.getRotation();
+        if(orientation== Surface.ROTATION_0)
+        {rotation=Surface.ROTATION_0;}
+        if(orientation== Surface.ROTATION_90)
+        {swapped=true;rotation=Surface.ROTATION_90;}
+        if(orientation== Surface.ROTATION_180)
+        { rotation=Surface.ROTATION_180;}
+        if(orientation== Surface.ROTATION_270)
+        {swapped=true; rotation=Surface.ROTATION_270;}
+        return swapped;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
+            @Override
+            public void onOrientationChanged(int orientation) {
+                ConstraintLayout ll=  findViewById(R.id.Constraint2Show);
+                ConstraintSet set = new ConstraintSet();
+                set.clone(ll);
+                // Monitors orientation values to determine the target rotation value
+                if (orientation >= 45 && orientation < 135) {
+                    rotation = Surface.ROTATION_270;
+                    set.setDimensionRatio(R.layout.activity_main,"1:3");
+                } else if (orientation >= 135 && orientation < 225) {
+                    rotation = Surface.ROTATION_180;
+                } else if (orientation >= 225 && orientation < 315) {
+                    rotation = Surface.ROTATION_90;
+                    set.setDimensionRatio(R.layout.activity_main,"1:3");
+                } else {
+                    rotation = Surface.ROTATION_0;
+                }
+
+                set.applyTo(ll);
+
+            }
+        };
+
+        orientationEventListener.enable();
         setContentView(R.layout.activity_show);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -289,6 +372,21 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
             }
         });
+        FloatingActionButton readAllButton= findViewById(R.id.readAllBtn);
+        readAllButton.setOnClickListener((new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                StringBuilder sb = new StringBuilder();
+                for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
+                    sb.append(entry.getValue());
+                    if((!isDimensionSwapped()))
+                        sb.append("\n");
+                    else
+                        sb.append(" ");
+                }
+                textView.setText(sb.toString());
+            }
+        }));
     }
     public static class TextDialog  extends DialogFragment {
         public String textToDialog;
@@ -318,31 +416,38 @@ public class ShowActivity extends AppCompatActivity implements SurfaceHolder.Cal
     }
 
 
-    private void DrawBoundingBox(int color, HashMap<Rect,String> rectHashMap,int rotationDegrees) {
+    private void DrawBoundingBox(int rotationDegrees) {
 
+        int colorBackground = Color.parseColor("#33e0f7fa");
+        int colorWhite = Color.parseColor("#8CFFFFFF");
         canvas = holder.lockCanvas();
-        canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-        canvas.rotate((float) rotationDegrees);
-        //border's properties
-        paint = new Paint();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(color);
-        paint.setStrokeWidth(5);
-        Paint paint2 = new Paint();
-        paint2.setColor(color);
+        if(canvas!=null) {
+            canvas.drawColor(colorBackground, PorterDuff.Mode.CLEAR);
+            canvas.rotate((float) rotationDegrees);
+            //border's properties
+            paint = new Paint();
+            paint.setStyle(Paint.Style.FILL_AND_STROKE);
+            paint.setColor(colorBackground);
+            paint.setStrokeWidth(3);
+/*        Paint paint2 = new Paint();
+        paint2.setColor(colorWhite);*/
 
-        //set text size
-        for(Map.Entry<Rect,String> entry : _rectList.entrySet()) {
-            Rect rect = entry.getKey();
-            String line = entry.getValue();
-            paint2.setTextSize((float) (rect.height()*0.9));
-            canvas.drawRect(rect,paint);
-            canvas.drawText(line,rect.left,rect.bottom,paint2);
-        }
-        // rectArrayList.forEach(x->canvas.drawRect(x, paint));
+            //set text size
+            for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
+                Rect rect = entry.getKey();
+              /*  int rectLeft= (int) (rect.left/scaleFactorWidthHeight[0]);
+                int rectTop= (int) (rect.top/scaleFactorWidthHeight[1]);
+                int rectRight= (int) (rect.right/scaleFactorWidthHeight[0]);
+                int rectBot= (int) (rect.bottom/scaleFactorWidthHeight[1]);
+                rect.set(rectLeft,rectTop,rectRight,rectBot);*/
+                canvas.drawRect(rect, paint);
+            }
+            // rectArrayList.forEach(x->canvas.drawRect(x, paint));
 
 //        canvas.drawRect(rect, paint);
-        holder.unlockCanvasAndPost(canvas);
+            holder.unlockCanvasAndPost(canvas);
+        }
+
     }
     @SuppressLint("ResourceAsColor")
     @Override

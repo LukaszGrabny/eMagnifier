@@ -77,8 +77,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static java.lang.Float.max;
-
 
 public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder.Callback, TextToSpeech.OnInitListener{
     TextView textView;
@@ -87,10 +85,10 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
     SurfaceView surfaceView;
     Canvas canvas;
     Paint paint;
-    int cameraHeight, cameraWidth, xOffset, yOffset, boxWidth, boxHeight;
+
     private static final int MY_CAMERA_REQUEST_CODE = 100;
     public Size imgResolution;
-    float scaleFactor;
+    Float[] scaleFactorWidthHeight= new Float[2];
     LinkedHashMap<Rect,String> _rectList = new LinkedHashMap<Rect, String>();
 
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
@@ -160,23 +158,29 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
      *
      * Binding to camera
      */
+    @SuppressLint("RestrictedApi")
     private void bindPreview(ProcessCameraProvider cameraProvider) throws CameraAccessException {
         boolean swappedDimensions=isDimensionSwapped();
         Rational rational;
+        Preview preview = null;
         if(!swappedDimensions) {
             imgResolution = new Size(mCameraView.getWidth(), mCameraView.getHeight());
-            rational = new Rational(3, 5);
+            rational = new Rational(9, 21);
+            preview = new Preview.Builder()
+                    .setTargetResolution(imgResolution)
+                    .setTargetAspectRatioCustom(rational)
+                    .build();
         }
         else {
             imgResolution = new Size(mCameraView.getHeight(), mCameraView.getWidth());
-            rational=new Rational(5, 3);
+            rational=new Rational(21, 9);
+            preview = new Preview.Builder()
+                    .setTargetResolution(imgResolution)
+                    .setTargetAspectRatioCustom(rational)
+                    .build();
         }
         Log.d("imgres",String.valueOf(imgResolution.toString()));
 
-        @SuppressLint("RestrictedApi") Preview preview = new Preview.Builder()
-                .setTargetResolution(imgResolution)
-                .setTargetAspectRatioCustom(rational)
-                .build();
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
@@ -185,11 +189,25 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
         ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
         Camera2Interop.Extender ext = new Camera2Interop.Extender<>(builder);
         ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(50, 100));
-        builder.setTargetResolution(imgResolution)
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setTargetRotation(rotation)
-                .build();
+        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(60, 80));
+        Log.d("bmp",String.valueOf(imgResolution.getWidth()));
+        Log.d("bmp",String.valueOf(imgResolution.getHeight()));
+        Log.d("dobmp",String.valueOf(rotation));
+        Log.d("dobmp",String.valueOf(preview.getAttachedSurfaceResolution()));
+        if(swappedDimensions) {
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetRotation(rotation)
+                    .build();
+        }
+        else {
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetResolution(imgResolution)
+                    .setTargetRotation(rotation)
+                    .build();
+        }
+
         @SuppressLint("RestrictedApi") ImageAnalysis imageAnalysis = builder.build();
         imageAnalysis.setAnalyzer(executor, new ImageAnalysis.Analyzer() {
             @SuppressLint("UnsafeExperimentalUsageError")
@@ -211,10 +229,10 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
                 Log.d("bmp",String.valueOf(bmp.getWidth()));
                 Log.d("mCamera width",String.valueOf(mCameraView.getWidth()));
                 Log.d("mCamera height",String.valueOf(mCameraView.getHeight()));
-                scaleFactor = max(
-                        (float) bmp.getWidth() / (float) mCameraView.getWidth(),
-                        (float) bmp.getHeight() / (float) mCameraView.getHeight());
-                Log.d("asd",String.valueOf(scaleFactor));
+                scaleFactorWidthHeight[0] = ((float) bmp.getWidth() / (float) mCameraView.getWidth());
+                scaleFactorWidthHeight[1] = ((float) bmp.getHeight() / (float) mCameraView.getHeight());
+
+//                Log.d("asd",String.valueOf(scaleFactor));
                 Bitmap resizedBitmap =
                         Bitmap.createScaledBitmap(
                                 bmp,
@@ -303,10 +321,6 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
         OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
             @Override
             public void onOrientationChanged(int orientation) {
-/*                ConstraintLayout ll=  findViewById(R.id.linearLayout);
-                ConstraintSet set = new ConstraintSet();
-                set.clone(ll);*/
-                // Monitors orientation values to determine the target rotation value
                 if (orientation >= 45 && orientation < 135) {
                     rotation = Surface.ROTATION_270;
                     //set.setDimensionRatio(R.layout.activity_main,"1:3");
@@ -318,8 +332,6 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
                 } else {
                     rotation = Surface.ROTATION_0;
                 }
-
-               // set.applyTo(ll);
 
             }
         };
@@ -394,6 +406,7 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
             }
 
         }));
+
     }
     private static Collection<String> splitStringBySize(String str, int size) {
         ArrayList<String> split = new ArrayList<>();
@@ -432,37 +445,40 @@ public class SaveFileActivity extends AppCompatActivity implements SurfaceHolder
         int colorBackground = Color.parseColor("#33e0f7fa");
         int colorWhite = Color.parseColor("#8CFFFFFF");
         canvas = holder.lockCanvas();
-        canvas.drawColor(colorBackground, PorterDuff.Mode.CLEAR);
-        canvas.rotate((float) rotationDegrees);
-        //border's properties
-        paint = new Paint();
-        paint.setStyle(Paint.Style.FILL_AND_STROKE);
-        paint.setColor(colorBackground);
-        paint.setStrokeWidth(3);
+        if(canvas!=null) {
+            canvas.drawColor(colorBackground, PorterDuff.Mode.CLEAR);
+            canvas.rotate((float) rotationDegrees);
+            //border's properties
+            paint = new Paint();
+            paint.setStyle(Paint.Style.FILL_AND_STROKE);
+            paint.setColor(colorBackground);
+            paint.setStrokeWidth(3);
 /*        Paint paint2 = new Paint();
         paint2.setColor(colorWhite);*/
 
-        //set text size
-        for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
-            Rect rect = entry.getKey();
+            //set text size
+            for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
+                Rect rect = entry.getKey();
         /*    String line = entry.getValue();
             paint2.setTextSize((float) (rect.height()*0.9));*/
-            canvas.drawRect(rect, paint);
-            // canvas.drawText(line,rect.left,rect.bottom,paint2);
-        }
-        // rectArrayList.forEach(x->canvas.drawRect(x, paint));
+                canvas.drawRect(rect, paint);
+                // canvas.drawText(line,rect.left,rect.bottom,paint2);
+            }
+            // rectArrayList.forEach(x->canvas.drawRect(x, paint));
 
 //        canvas.drawRect(rect, paint);
-        holder.unlockCanvasAndPost(canvas);
+            holder.unlockCanvasAndPost(canvas);
+        }
 
     }
     @SuppressLint("ResourceAsColor")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int touchX = (int) event.getX();
-        touchX=(int) (touchX/scaleFactor);
+        touchX=(int) (touchX/scaleFactorWidthHeight[0]);
         int touchY = (int) event.getY();
-        touchY=(int) (touchY/scaleFactor);
+        touchY=(int) (touchY/scaleFactorWidthHeight[1]);
+
 
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:

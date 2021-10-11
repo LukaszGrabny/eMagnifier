@@ -4,7 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".RecordActivity">
+    tools:context=".RecordActivity"
+    app:layout_constraintHeight_percent="0.85"
+    app:layout_constraintWidth_percent="1"
+    app:layout_constraintHorizontal_bias="1"
+    android:background="@color/black">>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/recordBtnRecord"
@@ -51,13 +55,14 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/linearLayoutRecord"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_margin="0dp"
+        android:layout_margin="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintDimensionRatio="5:2"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintHeight_percent="0.15"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintWidth_percent="0.95">
 
         <EditText
             android:id="@+id/textRecord"
