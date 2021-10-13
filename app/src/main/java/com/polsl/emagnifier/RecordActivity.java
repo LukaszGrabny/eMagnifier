@@ -521,9 +521,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int touchX = (int) event.getX();
-        touchX=(int) (touchX/scaleFactor);
         int touchY = (int) event.getY();
-        touchY=(int) (touchY/scaleFactor);
 
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:

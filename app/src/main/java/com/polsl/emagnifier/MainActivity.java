@@ -91,9 +91,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     TextToSpeech tts = null;
     int rotation;
     int rotationDegrees;
-    /**
-     *Responsible for converting the rotation degrees from CameraX into the one compatible with Firebase ML
-     */
 
     private int degreesToFirebaseRotation(int degrees) {
         switch (degrees) {
@@ -111,10 +108,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
     }
 
-
-    /**
-     * Starting Camera
-     */
     void startCamera(){
             mCameraView = findViewById(R.id.previewView);
         imgResolution= new Size(mCameraView.getWidth(), mCameraView.getHeight());
@@ -203,7 +196,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             @SuppressLint("UnsafeExperimentalUsageError")
             @Override
             public void analyze(@NonNull ImageProxy image) {
-                //changing normal degrees into Firebase rotation
                 rotationDegrees = degreesToFirebaseRotation(image.getImageInfo().getRotationDegrees());
 
                 if (image == null || image.getImage() == null) {
@@ -238,7 +230,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 Log.d("asd2",String.valueOf(surfaceView.getHeight()));
                 FirebaseVisionTextRecognizer detector = FirebaseVision.getInstance()
                         .getOnDeviceTextRecognizer();
-                //Passing FirebaseVisionImage Object created from the bitmap
                 Task<FirebaseVisionText> result =  detector.processImage(FirebaseVisionImage.fromBitmap(bitmap))
                         .addOnSuccessListener(new OnSuccessListener<FirebaseVisionText>() {
                             @Override
@@ -248,18 +239,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
                                 StringBuilder stringBuilder =  new StringBuilder();
                                 String text=firebaseVisionText.getText();
-
-
                                 for (FirebaseVisionText.TextBlock block: firebaseVisionText.getTextBlocks()) {
 
                                         _rectList.put(block.getBoundingBox(),block.getText());
-//                                        for (FirebaseVisionText.Element element: line.getElements()) {
-//                                            String elementText = element.getText();
-//                                        }
+
                                 }
                                 DrawBoundingBox(rotationDegrees);
 
-                                //Opoźnienie odświeżania detektora
                                 Runnable runnable = new Runnable() {
                                     @Override
                                     public void run() {
@@ -322,9 +308,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 } else {
                     rotation = Surface.ROTATION_0;
                 }
-
                 set.applyTo(ll);
-
             }
         };
 
@@ -336,13 +320,12 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
         }
         tts = new TextToSpeech(this,this);
-       // this.onRequestPermissionsResult(100, new String[]{Manifest.permission.CAMERA},)
-        //Start Camera
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             startCamera();
         }
-        //Create the bounding box
+
         surfaceView = findViewById(R.id.overlay);
         surfaceView.setZOrderOnTop(true);
         holder = surfaceView.getHolder();
@@ -409,43 +392,30 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private void DrawBoundingBox(int rotationDegrees) {
 
             int colorBackground = Color.parseColor("#33e0f7fa");
-            int colorWhite = Color.parseColor("#8CFFFFFF");
             canvas = holder.lockCanvas();
             if(canvas!=null) {
                 canvas.drawColor(colorBackground, PorterDuff.Mode.CLEAR);
                 canvas.rotate((float) rotationDegrees);
-                //border's properties
                 paint = new Paint();
                 paint.setStyle(Paint.Style.FILL_AND_STROKE);
                 paint.setColor(colorBackground);
                 paint.setStrokeWidth(3);
-/*        Paint paint2 = new Paint();
-        paint2.setColor(colorWhite);*/
 
                 //set text size
                 for (Map.Entry<Rect, String> entry : _rectList.entrySet()) {
                     Rect rect = entry.getKey();
-              /*  int rectLeft= (int) (rect.left/scaleFactorWidthHeight[0]);
-                int rectTop= (int) (rect.top/scaleFactorWidthHeight[1]);
-                int rectRight= (int) (rect.right/scaleFactorWidthHeight[0]);
-                int rectBot= (int) (rect.bottom/scaleFactorWidthHeight[1]);
-                rect.set(rectLeft,rectTop,rectRight,rectBot);*/
+
                     canvas.drawRect(rect, paint);
                 }
-                // rectArrayList.forEach(x->canvas.drawRect(x, paint));
-
-//        canvas.drawRect(rect, paint);
                 holder.unlockCanvasAndPost(canvas);
             }
-
     }
     @SuppressLint("ResourceAsColor")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int touchX = (int) event.getX();
-        touchX=(int) (touchX/scaleFactorWidthHeight[0]);
-        int touchY = (int) event.getY();
-        touchY=(int) (touchY/scaleFactorWidthHeight[1]);
+
+        int  touchX = (int) event.getX();
+        int  touchY = (int) event.getY();
 
         switch(event.getAction()){
             case MotionEvent.ACTION_DOWN:
@@ -459,12 +429,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                for(Map.Entry<Rect,String> entry : _rectList.entrySet()) {
-                    Rect rect = entry.getKey();
-                    String line = entry.getValue();
-                    Log.d("asd","dawaj");
-
-                }
                 break;
             case MotionEvent.ACTION_MOVE:
                 System.out.println("Sliding your finger around on the screen.");
@@ -473,9 +437,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         return true;
     }
 
-    /**
-     * Callback functions for the surface Holder
-     */
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
