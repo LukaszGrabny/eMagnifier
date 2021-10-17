@@ -16,11 +16,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
-        app:layout_constraintBottom_toBottomOf="@+id/overlayRecord"
+        app:layout_constraintBottom_toBottomOf="@+id/overlay"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/presence_video_online" />
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/speakBtnRecord"
+        android:id="@+id/readBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
@@ -30,20 +30,20 @@
         app:srcCompat="@android:drawable/ic_lock_silent_mode_off" />
 
     <SurfaceView
-        android:id="@+id/overlayRecord"
+        android:id="@+id/overlay"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="fitCenter"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayoutRecord"
+        app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.camera.view.PreviewView
-        android:id="@+id/previewViewRecord"
+        android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayoutRecord"
+        app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -54,7 +54,7 @@
     </androidx.camera.view.PreviewView>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/linearLayoutRecord"
+        android:id="@+id/Constraintlayout"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_margin="1dp"
@@ -65,7 +65,7 @@
         app:layout_constraintWidth_percent="0.95">
 
         <EditText
-            android:id="@+id/textRecord"
+            android:id="@+id/text"
             android:textIsSelectable="true"
             android:layout_width="0dp"
             android:layout_height="0dp"

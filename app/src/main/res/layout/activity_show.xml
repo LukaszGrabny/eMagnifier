@@ -11,21 +11,21 @@
     android:background="@color/black">
 
     <SurfaceView
-            android:id="@+id/overlayShow"
+            android:id="@+id/overlay"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:scaleType="fitCenter"
-            app:layout_constraintBottom_toTopOf="@+id/Constraint2Show"
+            app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <androidx.camera.view.PreviewView
-            android:id="@+id/previewViewShow"
+            android:id="@+id/previewView"
             android:layout_width="0dp"
             android:layout_height="0dp"
             app:scaleType="fitCenter"
-            app:layout_constraintBottom_toTopOf="@+id/Constraint2Show"
+            app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
@@ -49,12 +49,12 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
-        app:layout_constraintBottom_toTopOf="@+id/Constraint2Show"
+        app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/ic_menu_search" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/Constraint2Show"
+            android:id="@+id/Constraintlayout"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_margin="1dp"
@@ -65,7 +65,7 @@
             app:layout_constraintWidth_percent="0.95">
 
             <EditText
-                android:id="@+id/textShow"
+                android:id="@+id/text"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 android:background="@color/white"
