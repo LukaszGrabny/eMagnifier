@@ -2,14 +2,11 @@ package com.polsl.emagnifier;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
-import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.OrientationEventListener;
 import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -17,7 +14,6 @@ import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -30,12 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class RecordActivity extends AppCompatActivity{
 
-    TextView textView;
-    PreviewView mCameraView;
+
     SurfaceHolder holder;
-    SurfaceView surfaceView;
-    Canvas canvas;
-    Paint paint;
+
     ConcurrentHashMap<Rect,String> _rectList = new ConcurrentHashMap<Rect, String>();
     LinkedHashSet<String> stringSet= new LinkedHashSet<>();
     LinkedHashSet<String> tempSet= new LinkedHashSet<>();

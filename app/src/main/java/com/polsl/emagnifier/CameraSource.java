@@ -122,7 +122,7 @@ public class CameraSource{
         Preview preview = null;
         if(!swappedDimensions) {
             imgResolution = new Size(mCameraView.getWidth(), mCameraView.getHeight());
-            rational = new Rational(9, 21);
+            rational = new Rational(9, 16);
             preview = new Preview.Builder()
                     .setTargetResolution(imgResolution)
                     .setTargetAspectRatioCustom(rational)
@@ -152,13 +152,13 @@ public class CameraSource{
         Log.d("dobmp",String.valueOf(rotation));
         Log.d("dobmp",String.valueOf(preview.getAttachedSurfaceResolution()));
         if(swappedDimensions) {
-            builder.setTargetAspectRatioCustom(new Rational(21, 9))
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setTargetRotation(rotation)
                     .build();
         }
         else {
-            builder.setTargetAspectRatioCustom(new Rational(21, 9))
+            builder.setTargetAspectRatioCustom(new Rational(16, 9))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setTargetResolution(imgResolution)
                     .setTargetRotation(rotation)
@@ -220,9 +220,7 @@ public class CameraSource{
                                 for (FirebaseVisionText.TextBlock block: firebaseVisionText.getTextBlocks()) {
 
                                     _rectList.put(block.getBoundingBox(),block.getText());
-//                                        for (FirebaseVisionText.Element element: line.getElements()) {
-//                                            String elementText = element.getText();
-//                                        }
+                                    _rectCon.put(block.getBoundingBox(),block.getText());
                                 }
                                 surfaceOverlay.DrawBoundingBox(rotationDegrees, _rectList);
 
