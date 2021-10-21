@@ -388,7 +388,7 @@ public class CameraSource{
                 new ImageCapture.OutputFileOptions.Builder(file).build();
 
         if (imageCapture != null) {
-            imageCapture.takePicture(outputFileOptions, activity.getMainExecutor(), new ImageCapture.OnImageSavedCallback() {
+            imageCapture.takePicture(outputFileOptions, ContextCompat.getMainExecutor(context), new ImageCapture.OnImageSavedCallback() {
 
                 @Override
                 public void onImageSaved(@NonNull @NotNull ImageCapture.OutputFileResults outputFileResults) {
