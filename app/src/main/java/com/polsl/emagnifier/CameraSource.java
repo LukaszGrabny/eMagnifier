@@ -368,12 +368,12 @@ public class CameraSource{
         set.clone(ll);
         if (orientation >= 45 && orientation < 135) {
             rotation = Surface.ROTATION_270;
-            set.setDimensionRatio(R.layout.activity_main,"1:3");
+            set.setDimensionRatio(R.layout.activity_read,"1:3");
         } else if (orientation >= 135 && orientation < 225) {
             rotation = Surface.ROTATION_180;
         } else if (orientation >= 225 && orientation < 315) {
             rotation = Surface.ROTATION_90;
-            set.setDimensionRatio(R.layout.activity_main,"1:3");
+            set.setDimensionRatio(R.layout.activity_read,"1:3");
         } else {
             rotation = Surface.ROTATION_0;
         }
