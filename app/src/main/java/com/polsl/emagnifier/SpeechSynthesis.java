@@ -27,6 +27,7 @@ public class SpeechSynthesis implements TextToSpeech.OnInitListener {
 
      void speakOut(String text) {
         tts.setLanguage(new Locale("pl", "PL"));
+    //    tts.setVoice(new Voice("high",new Locale("pl", "PL"),Voice.QUALITY_VERY_HIGH,Voice.LATENCY_VERY_LOW,false,null));
         tts.speak(text.toLowerCase(new Locale("pl", "PL")), TextToSpeech.QUEUE_FLUSH,null,"");
     }
      void speakOutLong(Collection<String> text) {
