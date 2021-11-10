@@ -44,15 +44,22 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
+        android:scaleType="fitCenter"
+        app:maxImageSize="45dp"
+        app:fabSize="auto"
         app:layout_constraintBottom_toTopOf="@+id/readBtn"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/toast_frame" />
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/readBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
+        android:scaleType="fitCenter"
+        app:maxImageSize="45dp"
+        app:fabSize="auto"
         app:layout_constraintBottom_toTopOf="@+id/Constraintlayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/ic_lock_silent_mode_off" />
@@ -66,7 +73,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_percent="0.15"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintWidth_percent="0.95">
+        app:layout_constraintWidth_percent="0.99">
 
         <EditText
             android:id="@+id/text"
@@ -74,12 +81,12 @@
             android:layout_height="0dp"
             android:background="@color/white"
             android:gravity="center_horizontal"
+            android:hint="Rozpoznany tekst"
             android:padding="5dp"
             android:scrollbars="vertical"
-            android:hint="Rozpoznany tekst"
             android:textColor="@color/black"
             android:textIsSelectable="true"
-            android:textSize="20sp"
+            android:textSize="30sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

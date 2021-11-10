@@ -16,6 +16,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
+        android:scaleType="fitCenter"
+        app:maxImageSize="45dp"
+        app:fabSize="auto"
         app:layout_constraintBottom_toBottomOf="@+id/overlay"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/presence_video_online" />
@@ -25,6 +28,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
+        android:scaleType="fitCenter"
+        app:maxImageSize="45dp"
+        app:fabSize="auto"
         app:layout_constraintBottom_toTopOf="@+id/recordBtnRecord"
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/ic_lock_silent_mode_off" />
@@ -57,12 +63,12 @@
         android:id="@+id/Constraintlayout"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_margin="1dp"
+        android:layout_margin="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_percent="0.15"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintWidth_percent="0.95">
+        app:layout_constraintWidth_percent="1">
 
         <EditText
             android:id="@+id/text"
@@ -73,9 +79,9 @@
             android:gravity="center_horizontal"
             android:padding="12dp"
             android:scrollbars="vertical"
-            android:text="Rozpoznany tekst"
+            android:hint="Rozpoznany tekst"
             android:textColor="@color/black"
-            android:textSize="20sp"
+            android:textSize="30sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"

@@ -10,6 +10,20 @@ app:layout_constraintWidth_percent="1"
 tools:context=".SaveFileActivity">
 
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/galleryBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:layout_gravity="top|end"
+        android:layout_margin="@dimen/fab_margin"
+        android:scaleType="fitCenter"
+        app:maxImageSize="45dp"
+        app:fabSize="auto"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@android:drawable/ic_menu_gallery" />
+
     <SurfaceView
         android:id="@+id/overlay"
         android:layout_width="0dp"
@@ -26,10 +40,10 @@ tools:context=".SaveFileActivity">
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.1"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1"
+        app:layout_constraintVertical_bias="0.0"
         app:scaleType="fitCenter">
 
     </androidx.camera.view.PreviewView>

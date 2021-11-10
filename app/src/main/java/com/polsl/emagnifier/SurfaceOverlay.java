@@ -82,9 +82,7 @@ public class SurfaceOverlay implements SurfaceHolder.Callback{
             int  touchX = (int) event.getX();
             int  touchY = (int) event.getY();
 
-            switch(event.getAction()){
-                case MotionEvent.ACTION_DOWN:
-                    System.out.println("Touching down!");
+            if(event.getAction() == MotionEvent.ACTION_DOWN){
                     for(Map.Entry<Rect,String> entry : _rectList.entrySet()) {
                         Rect rect = entry.getKey();
                         if(rect.contains(touchX,touchY)) {
@@ -92,12 +90,6 @@ public class SurfaceOverlay implements SurfaceHolder.Callback{
                             textView.setText(line);
                         }
                     }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    System.out.println("Sliding your finger around on the screen.");
-                    break;
             }
     }
 

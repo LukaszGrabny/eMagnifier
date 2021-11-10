@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.polsl.emagnifier">
 
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:allowBackup="true"
@@ -12,21 +15,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.EMagnifier.NoActionBar">
-        <activity android:name=".SaveFileActivity"></activity>
+        <activity android:name=".SaveFileActivity" />
         <activity android:name=".RecordActivity" />
-        <activity
-            android:name=".ShowActivity"
-            android:label="@string/title_activity_show"
-            android:theme="@style/Theme.EMagnifier.NoActionBar" />
+        <activity android:name=".ShowActivity" />
+        <activity android:name=".ReadActivity" />
         <activity android:name=".MenuActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <action android:name="android.service.textservice.SpellCheckerService" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ReadActivity" />
     </application>
 
 </manifest>

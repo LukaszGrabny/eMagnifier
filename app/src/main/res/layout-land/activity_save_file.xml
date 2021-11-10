@@ -32,6 +32,17 @@ tools:context=".SaveFileActivity">
         app:layout_constraintVertical_bias="0.0"
         app:scaleType="fitCenter">
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/galleryBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|left"
+            android:layout_margin="@dimen/fab_margin"
+            android:clickable="true"
+            android:scaleType="fitCenter"
+            app:fabSize="auto"
+            app:maxImageSize="45dp"
+            app:srcCompat="@android:drawable/ic_menu_gallery" />
     </androidx.camera.view.PreviewView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton

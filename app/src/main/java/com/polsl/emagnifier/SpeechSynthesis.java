@@ -1,6 +1,5 @@
 package com.polsl.emagnifier;
 
-import android.app.Activity;
 import android.content.Context;
 import android.speech.tts.TextToSpeech;
 
@@ -8,12 +7,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Locale;
 
-public class SpeechSynthesis implements TextToSpeech.OnInitListener {
-    protected Activity activity;
+        public class SpeechSynthesis implements TextToSpeech.OnInitListener {
     private Context context;
     TextToSpeech tts;
-    public SpeechSynthesis (Activity activity, Context context) {
-        this.activity = activity;
+    public SpeechSynthesis (Context context) {
         this.context = context;
         tts = new TextToSpeech(context,this);
     }

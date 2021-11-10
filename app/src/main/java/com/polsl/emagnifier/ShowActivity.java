@@ -1,8 +1,6 @@
 package com.polsl.emagnifier;
 
-import android.Manifest;
 import android.app.Dialog;
-import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -22,7 +20,6 @@ import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.view.PreviewView;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -57,17 +54,11 @@ public class ShowActivity extends AppCompatActivity{
 
         setContentView(R.layout.activity_show);
         textView = findViewById(R.id.text);
-        cameraSource= new CameraSource(this,this, holder);
-        speechSynthesis = new SpeechSynthesis(this,this);
+        cameraSource= new CameraSource(this,this);
+        speechSynthesis = new SpeechSynthesis(this);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_DENIED) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED) {
-            cameraSource.startCamera();
-        }
+        cameraSource.startCamera();
+
         OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
             @Override
             public void onOrientationChanged(int orientation) {

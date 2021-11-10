@@ -1,7 +1,5 @@
 package com.polsl.emagnifier;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
@@ -14,7 +12,6 @@ import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -46,12 +43,9 @@ public class RecordActivity extends AppCompatActivity{
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_record);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_DENIED) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
-        }
-        cameraSource= new CameraSource(this,this, holder);
-        speechSynthesis = new SpeechSynthesis(this,this);
+
+        cameraSource= new CameraSource(this,this);
+        speechSynthesis = new SpeechSynthesis(this);
         OrientationEventListener orientationEventListener = new OrientationEventListener(this) {
             @Override
             public void onOrientationChanged(int orientation) {
@@ -59,11 +53,8 @@ public class RecordActivity extends AppCompatActivity{
             }
         };
         orientationEventListener.enable();
+        cameraSource.startCamera();
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED) {
-            cameraSource.startCamera();
-        }
         TextView textView = findViewById(R.id.text);
         FloatingActionButton recordButton = findViewById(R.id.recordBtnRecord);
         recordButton.setOnClickListener(new View.OnClickListener() {
@@ -73,7 +64,7 @@ public class RecordActivity extends AppCompatActivity{
                     if(!cameraSource.recordBtnClicked) {
                         cameraSource.recordBtnClicked = true;
                         tempSet= new LinkedHashSet<String>();
-                        tempSet=cameraSource.RecordAndProcess();
+                        tempSet=cameraSource.recordAndProcess();
                         recordButton.setImageResource(android.R.drawable.ic_media_pause);
                     }
                     else {

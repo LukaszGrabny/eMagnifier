@@ -19,7 +19,6 @@ import android.util.Size;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.Surface;
-import android.view.SurfaceHolder;
 import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -83,16 +82,14 @@ public class CameraSource{
     TextView textView;
     ConcurrentHashMap<Rect,String> _rectCon = new ConcurrentHashMap<Rect,String>();
     LinkedHashMap<Rect,String>_rectList = new LinkedHashMap<>();
-    SurfaceHolder holder;
     SurfaceOverlay surfaceOverlay;
     public boolean recordBtnClicked;
     ImageCapture imageCapture=null;
 
 
-    public CameraSource (Activity activity, Context context, SurfaceHolder holder) {
+    public CameraSource (Activity activity, Context context) {
         this.activity = activity;
         this.context = context;
-        this.holder = holder;
         surfaceOverlay= new SurfaceOverlay(activity);
     }
 
@@ -122,6 +119,7 @@ public class CameraSource{
         Preview preview = null;
         if(!swappedDimensions) {
             imgResolution = new Size(mCameraView.getWidth(), mCameraView.getHeight());
+
             rational = new Rational(9, 16);
             preview = new Preview.Builder()
                     .setTargetResolution(imgResolution)
@@ -130,14 +128,12 @@ public class CameraSource{
         }
         else {
             imgResolution = new Size(mCameraView.getHeight(), mCameraView.getWidth());
-            rational=new Rational(21, 9);
+            rational=new Rational(16, 9);
             preview = new Preview.Builder()
                     .setTargetResolution(imgResolution)
                     .setTargetAspectRatioCustom(rational)
                     .build();
         }
-        Log.d("imgres",String.valueOf(imgResolution.toString()));
-
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
@@ -147,10 +143,7 @@ public class CameraSource{
         Camera2Interop.Extender ext = new Camera2Interop.Extender<>(builder);
         ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
         ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<Integer>(60, 80));
-        Log.d("bmp",String.valueOf(imgResolution.getWidth()));
-        Log.d("bmp",String.valueOf(imgResolution.getHeight()));
-        Log.d("dobmp",String.valueOf(rotation));
-        Log.d("dobmp",String.valueOf(preview.getAttachedSurfaceResolution()));
+
         if(swappedDimensions) {
             builder.setTargetAspectRatioCustom(new Rational(16, 9))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -170,27 +163,18 @@ public class CameraSource{
             @SuppressLint("UnsafeExperimentalUsageError")
             @Override
             public void analyze(@NonNull ImageProxy image) {
-                //changing normal degrees into Firebase rotation
                 rotationDegrees = degreesToFirebaseRotation(image.getImageInfo().getRotationDegrees());
 
                 if (image == null || image.getImage() == null) {
                     return;
                 }
-                //Getting a FirebaseVisionImage object using the Image object and rotationDegrees
                 final Image mediaImage = image.getImage();
 
                 FirebaseVisionImage images = FirebaseVisionImage.fromMediaImage(mediaImage, rotationDegrees);
-                //Getting bitmap from FirebaseVisionImage Object
                 Bitmap bmp=images.getBitmap();
-                Log.d("bmp",String.valueOf(bmp.getHeight()));
-                Log.d("bmp",String.valueOf(bmp.getWidth()));
-                Log.d("mCamera width",String.valueOf(mCameraView.getWidth()));
-                Log.d("mCamera height",String.valueOf(mCameraView.getHeight()));
 
                 scaleFactorWidthHeight[0] = ((float) bmp.getWidth() / (float) mCameraView.getWidth());
                 scaleFactorWidthHeight[1] = ((float) bmp.getHeight() / (float) mCameraView.getHeight());
-                Log.d("asd",String.valueOf(scaleFactorWidthHeight[0]));
-                Log.d("asd",String.valueOf(scaleFactorWidthHeight[1]));
                 Bitmap resizedBitmap =
                         Bitmap.createScaledBitmap(
                                 bmp,
@@ -199,12 +183,8 @@ public class CameraSource{
                                 true);
 
                 Bitmap bitmap = Bitmap.createBitmap(resizedBitmap);
-                Log.d("asd",String.valueOf(bitmap.getWidth()));
-                Log.d("asd",String.valueOf(bitmap.getHeight()));
-
                 FirebaseVisionTextRecognizer detector = FirebaseVision.getInstance()
                         .getOnDeviceTextRecognizer();
-                //Passing FirebaseVisionImage Object created from the bitmap
                 Task<FirebaseVisionText> result =  detector.processImage(FirebaseVisionImage.fromBitmap(bitmap))
                         .addOnSuccessListener(new OnSuccessListener<FirebaseVisionText>() {
                             @Override
@@ -215,10 +195,7 @@ public class CameraSource{
                                 }
                                 StringBuilder stringBuilder =  new StringBuilder();
                                 String text=firebaseVisionText.getText();
-
-
                                 for (FirebaseVisionText.TextBlock block: firebaseVisionText.getTextBlocks()) {
-
                                     _rectList.put(block.getBoundingBox(),block.getText());
                                     _rectCon.put(block.getBoundingBox(),block.getText());
                                 }
@@ -240,8 +217,6 @@ public class CameraSource{
                                 new OnFailureListener() {
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
-                                        // Task failed with an exception
-                                        // ...
                                         Log.e("Error",e.toString());
                                         image.close();
                                     }
@@ -251,7 +226,7 @@ public class CameraSource{
         imageCapture = new ImageCapture.Builder()
                 .setTargetRotation(rotation)
                 .build();
-        Camera camera = cameraProvider.bindToLifecycle((AppCompatActivity) context, cameraSelector, imageAnalysis,preview, imageCapture);
+        Camera camera = cameraProvider.bindToLifecycle((AppCompatActivity) context, cameraSelector, imageAnalysis, preview, imageCapture);
         Log.d("dobmp",String.valueOf(preview.getAttachedSurfaceResolution()));
     }
     public boolean isDimensionSwapped(){
@@ -345,11 +320,10 @@ public class CameraSource{
         return sb;
     }
 
-    public LinkedHashSet<String> RecordAndProcess(){
+    public LinkedHashSet<String> recordAndProcess(){
         LinkedHashSet<String> stringSet= new LinkedHashSet<String>();
         new Thread(new Runnable() {
             public void run() {
-              //  textView.setText("");
                 while(recordBtnClicked){
                     for(Map.Entry<Rect,String> entry : _rectCon.entrySet()) {
                         if (entry.getValue() != null) {
@@ -408,6 +382,7 @@ public class CameraSource{
                         oldExif.setAttribute(UnicodeExifInterface.TAG_USER_COMMENT, unicodeStr);
                         oldExif.saveAttributes();
                         Log.d("tag2",oldExif.getAttribute(UnicodeExifInterface.TAG_USER_COMMENT));
+                        Log.d("tag2", file.getAbsolutePath());
                     } catch (IOException e) {
                         e.printStackTrace();
                         Log.d("jestem","cos sie popsulo");
